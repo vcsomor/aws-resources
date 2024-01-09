@@ -7,7 +7,6 @@ import (
 )
 
 func init() {
-	// versionCmd represents the version command
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
 		Short: "Print the version number of generated code example",
