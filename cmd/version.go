@@ -6,8 +6,8 @@ import (
 	"github.com/vcsomor/aws-resources/internal/version"
 )
 
-func init() {
-	rootCmd.AddCommand(&cobra.Command{
+func versionCommand() *cobra.Command {
+	return &cobra.Command{
 		Use:   "version",
 		Short: "Print the version number of generated code example",
 		Long:  `All software has versions.`,
@@ -17,6 +17,5 @@ func init() {
 			fmt.Println("Version:", version.Version)
 			fmt.Println("Go Version:", version.GoVersion)
 			fmt.Println("OS / Arch:", version.OsArch)
-		}},
-	)
+		}}
 }
