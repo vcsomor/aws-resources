@@ -1,5 +1,7 @@
 package aws_connector
 
+import "context"
+
 type awsLister struct {
 }
 
@@ -10,6 +12,8 @@ func NewLister() Lister {
 }
 
 func (l *awsLister) ListS3(_ ListS3Params) []ListS3Result {
+	NewClient(context.TODO())
+
 	return []ListS3Result{
 		{
 			Name: "my-bucket",

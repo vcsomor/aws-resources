@@ -13,7 +13,9 @@ type resultData struct {
 	Name string `json:"name"`
 }
 
-func ListResources(_ *cobra.Command, _ []string) {
+func ListResources(cmd *cobra.Command, args []string) {
+	fmt.Println(cmd.Flags().GetString("secret-access-key"))
+	fmt.Printf("arguments: %v", args)
 	writeResult(fetchData())
 }
 

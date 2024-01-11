@@ -26,6 +26,11 @@ to quickly create a Cobra application.`,
 		listCommand(),
 	)
 
+	rootCmd.PersistentFlags().
+		String("access-key-id", "", "Specifies the access key id")
+	rootCmd.PersistentFlags().
+		String("secret-access-key", "", "Specifies the secret access key")
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
