@@ -11,5 +11,5 @@ type ListRDSResult struct {
 }
 
 type RDSLister interface {
-	ListRDS(ctx context.Context, p ListRDSParams) []ListRDSResult
+	ListRDS(ctx context.Context, p ListRDSParams) ([]ListRDSResult, error)
 }

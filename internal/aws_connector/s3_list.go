@@ -11,5 +11,5 @@ type ListS3Result struct {
 }
 
 type S3Lister interface {
-	ListS3(ctx context.Context, p ListS3Params) []ListS3Result
+	ListS3(ctx context.Context, p ListS3Params) ([]ListS3Result, error)
 }

@@ -24,16 +24,28 @@ func fetchData() []resultData {
 	logger := log.NewLogger(config.Config())
 
 	var result []resultData
-	l := conn.NewLister(conn.NewClientFactory(logger))
+	l := conn.NewLister(logger, conn.NewClientFactory(logger))
 
-	for _, res := range l.ListS3(context.TODO(), conn.ListS3Params{}) {
+	s3Items, err := l.ListS3(context.TODO(), conn.ListS3Params{})
+	if err != nil {
+		logger.WithError(err).
+			Error("unable to list S3 resources")
+		return nil
+	}
+	for _, res := range s3Items {
 		result = append(result, resultData{
 			Type: "S3",
 			Name: res.Name,
 		})
 	}
 
-	for _, res := range l.ListRDS(context.TODO(), conn.ListRDSParams{}) {
+	rdsItems, err := l.ListRDS(context.TODO(), conn.ListRDSParams{})
+	if err != nil {
+		logger.WithError(err).
+			Error("unable to list RDS resources")
+		return nil
+	}
+	for _, res := range rdsItems {
 		result = append(result, resultData{
 			Type: "RDS",
 			Name: res.Name,
