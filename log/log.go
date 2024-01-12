@@ -42,18 +42,14 @@ func init() {
 	defaultLogger = newLogrusLogger(config.Config())
 }
 
-
 // NewLogger returns a configured logrus instance
 func NewLogger(cfg config.Provider) *logrus.Logger {
 	return newLogrusLogger(cfg)
 }
 
-
-
 func newLogrusLogger(cfg config.Provider) *logrus.Logger {
-
 	l := logrus.New()
-	
+
 	if cfg.GetBool("json_logs") {
 		l.Formatter = new(logrus.JSONFormatter)
 	}
@@ -69,12 +65,17 @@ func newLogrusLogger(cfg config.Provider) *logrus.Logger {
 	default:
 		l.Level = logrus.DebugLevel
 	}
-	
+
 	return l
 }
 
 // Fields is a map string interface to define fields in the structured log
 type Fields map[string]interface{}
+
+// WithError allow us to add errors to the logger
+func (f Fields) WithError(err error) Fields {
+	return f.With("err", err)
+}
 
 // With allow us to define fields in out structured logs
 func (f Fields) With(k string, v interface{}) Fields {

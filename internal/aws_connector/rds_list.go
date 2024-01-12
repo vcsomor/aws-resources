@@ -1,5 +1,7 @@
 package aws_connector
 
+import "context"
+
 type ListRDSParams struct {
 	region string
 }
@@ -9,5 +11,5 @@ type ListRDSResult struct {
 }
 
 type RDSLister interface {
-	ListRDS(p ListRDSParams) []ListRDSResult
+	ListRDS(ctx context.Context, p ListRDSParams) []ListRDSResult
 }

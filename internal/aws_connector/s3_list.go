@@ -1,5 +1,7 @@
 package aws_connector
 
+import "context"
+
 type ListS3Params struct {
 	region string
 }
@@ -9,5 +11,5 @@ type ListS3Result struct {
 }
 
 type S3Lister interface {
-	ListS3(p ListS3Params) []ListS3Result
+	ListS3(ctx context.Context, p ListS3Params) []ListS3Result
 }

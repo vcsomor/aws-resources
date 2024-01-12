@@ -1,10 +1,13 @@
 package lister
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
+	"github.com/vcsomor/aws-resources/config"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
+	"github.com/vcsomor/aws-resources/log"
 	"os"
 )
 
@@ -13,23 +16,24 @@ type resultData struct {
 	Name string `json:"name"`
 }
 
-func ListResources(cmd *cobra.Command, args []string) {
-	fmt.Println(cmd.Flags().GetString("secret-access-key"))
-	fmt.Printf("arguments: %v", args)
+func ListResources(*cobra.Command, []string) {
 	writeResult(fetchData())
 }
 
 func fetchData() []resultData {
+	logger := log.NewLogger(config.Config())
+
 	var result []resultData
-	l := conn.NewLister()
-	for _, res := range l.ListS3(conn.ListS3Params{}) {
+	l := conn.NewLister(conn.NewClientFactory(logger))
+
+	for _, res := range l.ListS3(context.TODO(), conn.ListS3Params{}) {
 		result = append(result, resultData{
 			Type: "S3",
 			Name: res.Name,
 		})
 	}
 
-	for _, res := range l.ListRDS(conn.ListRDSParams{}) {
+	for _, res := range l.ListRDS(context.TODO(), conn.ListRDSParams{}) {
 		result = append(result, resultData{
 			Type: "RDS",
 			Name: res.Name,
