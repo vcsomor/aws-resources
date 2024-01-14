@@ -10,6 +10,6 @@ func listCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List AWS resources.",
 		Long:  "Listing the AWS Resources",
-		Run:   lister.ListResources,
+		Run:   lister.CmdListResources,
 	}
 }
