@@ -9,7 +9,6 @@ import (
 )
 
 type ListS3Params struct {
-	region string
 }
 
 type ListS3Result struct {

@@ -6,10 +6,18 @@ import (
 )
 
 func listCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := cobra.Command{
 		Use:   "list",
 		Short: "List AWS resources.",
 		Long:  "Listing the AWS Resources",
 		Run:   lister.CmdListResources,
 	}
+
+	cmd.PersistentFlags().
+		String(
+			"regions",
+			"all",
+			`Specify regions to list for e.g.: --regions us-east-1,us-east-2. Use "all" for every region`)
+
+	return &cmd
 }

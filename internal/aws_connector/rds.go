@@ -8,7 +8,6 @@ import (
 )
 
 type ListRDSParams struct {
-	region string
 }
 
 type ListRDSResult struct {

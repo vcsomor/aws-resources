@@ -11,7 +11,7 @@ import (
 
 type ClientFactory interface {
 	S3Client(ctx context.Context) (*s3.Client, error)
-	RDSClient(ctx context.Context) (*rds.Client, error)
+	RDSClient(ctx context.Context, region *string) (*rds.Client, error)
 }
 
 type defaultAwsClientFactory struct {
@@ -27,7 +27,7 @@ func NewClientFactory(logger *logrus.Logger) ClientFactory {
 }
 
 func (f *defaultAwsClientFactory) S3Client(ctx context.Context) (*s3.Client, error) {
-	cfg, err := f.loadConfig(ctx)
+	cfg, err := f.loadConfig(ctx, nil)
 	log := f.logger.WithField("client", "S3")
 
 	if err != nil {
@@ -39,8 +39,8 @@ func (f *defaultAwsClientFactory) S3Client(ctx context.Context) (*s3.Client, err
 	return s3.NewFromConfig(cfg), nil
 }
 
-func (f *defaultAwsClientFactory) RDSClient(ctx context.Context) (*rds.Client, error) {
-	cfg, err := f.loadConfig(ctx)
+func (f *defaultAwsClientFactory) RDSClient(ctx context.Context, region *string) (*rds.Client, error) {
+	cfg, err := f.loadConfig(ctx, region)
 	log := f.logger.WithField("client", "RDS")
 
 	if err != nil {
@@ -52,6 +52,9 @@ func (f *defaultAwsClientFactory) RDSClient(ctx context.Context) (*rds.Client, e
 	return rds.NewFromConfig(cfg), nil
 }
 
-func (f *defaultAwsClientFactory) loadConfig(ctx context.Context) (aws.Config, error) {
+func (f *defaultAwsClientFactory) loadConfig(ctx context.Context, region *string) (aws.Config, error) {
+	if region != nil {
+		return config.LoadDefaultConfig(ctx, config.WithRegion(*region))
+	}
 	return config.LoadDefaultConfig(ctx)
 }
