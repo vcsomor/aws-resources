@@ -10,7 +10,6 @@ import (
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
 	"github.com/vcsomor/aws-resources/log"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -45,14 +44,9 @@ var _ Lister = (*defaultLister)(nil)
 func CmdListResources(command *cobra.Command, _ []string) {
 	logger := log.NewLogger(config.Config())
 
-	regions, err := parseRegions(command.Flag("regions").
+	regions := parseRegions(command.Flag("regions").
 		Value.
 		String())
-	if err != nil {
-		logger.WithError(err).
-			Error("region error")
-		return
-	}
 
 	logger.Debugf("regions: %v", regions)
 
@@ -63,51 +57,6 @@ func CmdListResources(command *cobra.Command, _ []string) {
 
 	// TODO vcsomor do the write
 	writeResult(resources)
-}
-
-func parseRegions(regions string) ([]string, error) {
-	s := strings.Split(regions, ",")
-
-	var result []string
-	for _, regionRaw := range s {
-		curr := strings.ToLower(strings.Trim(regionRaw, " "))
-		result = append(result, curr)
-		if curr == "all" {
-			result = []string{
-				"us-east-2",
-				"us-east-1",
-				"us-west-1",
-				"us-west-2",
-				"af-south-1",
-				"ap-east-1",
-				"ap-south-2",
-				"ap-southeast-3",
-				"ap-southeast-4",
-				"ap-south-1",
-				"ap-northeast-3",
-				"ap-northeast-2",
-				"ap-southeast-1",
-				"ap-southeast-2",
-				"ap-northeast-1",
-				"ca-central-1",
-				"ca-west-1",
-				"eu-central-1",
-				"eu-west-1",
-				"eu-west-2",
-				"eu-south-1",
-				"eu-west-3",
-				"eu-south-2",
-				"eu-north-1",
-				"eu-central-2",
-				"il-central-1",
-				"me-south-1",
-				"me-central-1",
-				"sa-east-1",
-			}
-			break
-		}
-	}
-	return result, nil
 }
 
 func NewDefaultLister(logger *logrus.Logger, clientFactory conn.ClientFactory, regions []string) Lister {
