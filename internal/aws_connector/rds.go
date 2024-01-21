@@ -21,13 +21,13 @@ type RDSOperations interface {
 }
 
 type defaultRDSOperations struct {
-	logger *logrus.Logger
+	logger *logrus.Entry
 	client *rds.Client
 }
 
 var _ RDSOperations = (*defaultRDSOperations)(nil)
 
-func NewDefaultRDSOperations(logger *logrus.Logger, client *rds.Client) RDSOperations {
+func NewDefaultRDSOperations(logger *logrus.Entry, client *rds.Client) RDSOperations {
 	return &defaultRDSOperations{
 		logger: logger,
 		client: client,

@@ -28,7 +28,7 @@ func TestThreadPool(t *testing.T) {
 	start := time.Now()
 	var taskFutures []TaskFuture
 
-	mgr := NewJobManager(threads)
+	mgr := NewThreadpool(threads)
 	for i := 0; i < tasks; i++ {
 		tf, err := mgr.SubmitTask(&testTask{
 			sleep:  1 * time.Second,

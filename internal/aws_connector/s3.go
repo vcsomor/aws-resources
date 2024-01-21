@@ -22,13 +22,13 @@ type S3Operations interface {
 }
 
 type defaultS3Operations struct {
-	logger *logrus.Logger
+	logger *logrus.Entry
 	client *s3.Client
 }
 
 var _ S3Operations = (*defaultS3Operations)(nil)
 
-func NewDefaultS3Operations(logger *logrus.Logger, client *s3.Client) S3Operations {
+func NewDefaultS3Operations(logger *logrus.Entry, client *s3.Client) S3Operations {
 	return &defaultS3Operations{
 		logger: logger,
 		client: client,

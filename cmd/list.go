@@ -15,6 +15,12 @@ func listCommand() *cobra.Command {
 
 	cmd.PersistentFlags().
 		String(
+			"threads",
+			"2",
+			`Specify thread count for querying the resources.`)
+
+	cmd.PersistentFlags().
+		String(
 			"regions",
 			"all",
 			`Specify regions to list for e.g.: --regions us-east-1,us-east-2. Use "all" for every region`)

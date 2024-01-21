@@ -55,31 +55,31 @@ func (w *taskFutureWrapper) IsDone() bool {
 
 // =================== MANAGER ====================================
 
-type JobManager interface {
+type Threadpool interface {
 	SubmitTask(t Task) (TaskFuture, error)
 	Shutdown()
 }
 
-type defaultJobManager struct {
+type defaultThreadpool struct {
 	threadPool *threadpool.ThreadPool
 }
 
-var _ JobManager = (*defaultJobManager)(nil)
+var _ Threadpool = (*defaultThreadpool)(nil)
 
-func NewJobManager(threads int) JobManager {
-	return &defaultJobManager{
+func NewThreadpool(threads int) Threadpool {
+	return &defaultThreadpool{
 		threadPool: threadpool.NewThreadPool(threads, queueSize),
 	}
 }
 
-func (jm *defaultJobManager) SubmitTask(t Task) (TaskFuture, error) {
-	f, err := jm.threadPool.ExecuteFuture(wrapToCallable(t))
+func (p *defaultThreadpool) SubmitTask(t Task) (TaskFuture, error) {
+	f, err := p.threadPool.ExecuteFuture(wrapToCallable(t))
 	if err != nil {
 		return nil, err
 	}
 	return wrapToTaskFuture(f), nil
 }
 
-func (jm *defaultJobManager) Shutdown() {
-	jm.threadPool.Close()
+func (p *defaultThreadpool) Shutdown() {
+	p.threadPool.Close()
 }
