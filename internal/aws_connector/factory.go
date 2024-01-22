@@ -10,8 +10,8 @@ import (
 )
 
 type ClientFactory interface {
-	S3Client(ctx context.Context) (*s3.Client, error)
-	RDSClient(ctx context.Context, region *string) (*rds.Client, error)
+	S3Client(ctx context.Context) (S3Client, error)
+	RDSClient(ctx context.Context, region *string) (RDSClient, error)
 }
 
 type defaultAwsClientFactory struct {
@@ -26,30 +26,30 @@ func NewClientFactory(logger *logrus.Logger) ClientFactory {
 	}
 }
 
-func (f *defaultAwsClientFactory) S3Client(ctx context.Context) (*s3.Client, error) {
+func (f *defaultAwsClientFactory) S3Client(ctx context.Context) (S3Client, error) {
 	cfg, err := f.loadConfig(ctx, nil)
 	log := f.logger.WithField("client", "S3")
 
 	if err != nil {
 		log.WithError(err).
 			Error("client init failed")
-		return &s3.Client{}, err
+		return nil, err
 	}
 	log.Debugf("client init successful")
-	return s3.NewFromConfig(cfg), nil
+	return newS3Client(s3.NewFromConfig(cfg)), nil
 }
 
-func (f *defaultAwsClientFactory) RDSClient(ctx context.Context, region *string) (*rds.Client, error) {
+func (f *defaultAwsClientFactory) RDSClient(ctx context.Context, region *string) (RDSClient, error) {
 	cfg, err := f.loadConfig(ctx, region)
 	log := f.logger.WithField("client", "RDS")
 
 	if err != nil {
 		log.WithError(err).
 			Error("client init failed")
-		return &rds.Client{}, err
+		return nil, err
 	}
 	log.Debugf("client init successful")
-	return rds.NewFromConfig(cfg), nil
+	return newRDSClient(rds.NewFromConfig(cfg)), nil
 }
 
 func (f *defaultAwsClientFactory) loadConfig(ctx context.Context, region *string) (aws.Config, error) {

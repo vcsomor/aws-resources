@@ -70,6 +70,11 @@ func CmdListResources(command *cobra.Command, _ []string) {
 	logger.Debugf("regions: %v", regions)
 
 	threadpool := threads.NewThreadpool(threadCount)
+	defer func() {
+		if threadpool != nil {
+			threadpool.Shutdown()
+		}
+	}()
 
 	l := NewDefaultLister(
 		logger,
@@ -78,8 +83,6 @@ func CmdListResources(command *cobra.Command, _ []string) {
 		regions,
 	)
 	resources := l.List(context.TODO())
-
-	threadpool.Shutdown()
 
 	logger.WithField(logKeyResourceCount, len(resources)).
 		Debug("resources listed")

@@ -3,7 +3,6 @@ package aws_connector
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
-	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -16,26 +15,24 @@ type ListRDSResult struct {
 	CreateTime *time.Time
 }
 
-type RDSOperations interface {
+type RDSClient interface {
 	ListRDS(ctx context.Context, p ListRDSParams) ([]ListRDSResult, error)
 }
 
-type defaultRDSOperations struct {
-	logger *logrus.Entry
+type rdsClient struct {
 	client *rds.Client
 }
 
-var _ RDSOperations = (*defaultRDSOperations)(nil)
+var _ RDSClient = (*rdsClient)(nil)
 
-func NewDefaultRDSOperations(logger *logrus.Entry, client *rds.Client) RDSOperations {
-	return &defaultRDSOperations{
-		logger: logger,
+func newRDSClient(client *rds.Client) RDSClient {
+	return &rdsClient{
 		client: client,
 	}
 }
 
-func (op *defaultRDSOperations) ListRDS(ctx context.Context, _ ListRDSParams) ([]ListRDSResult, error) {
-	describeResult, err := op.client.DescribeDBInstances(ctx, nil)
+func (c *rdsClient) ListRDS(ctx context.Context, _ ListRDSParams) ([]ListRDSResult, error) {
+	describeResult, err := c.client.DescribeDBInstances(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

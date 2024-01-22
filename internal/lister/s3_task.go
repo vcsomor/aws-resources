@@ -2,7 +2,6 @@ package lister
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/sirupsen/logrus"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
 	"github.com/vcsomor/aws-resources/internal/threads"
@@ -11,7 +10,7 @@ import (
 type s3Task struct {
 	ctx    context.Context
 	logger *logrus.Entry
-	client *s3.Client
+	client conn.S3Client
 }
 
 type s3TaskResult struct {
@@ -24,7 +23,7 @@ var _ threads.Task = (*s3Task)(nil)
 func newS3Task(
 	ctx context.Context,
 	logger *logrus.Entry,
-	client *s3.Client,
+	client conn.S3Client,
 ) threads.Task {
 	return &s3Task{
 		ctx:    ctx,
@@ -34,8 +33,7 @@ func newS3Task(
 }
 
 func (t *s3Task) Execute() any {
-	resources, err := conn.NewDefaultS3Operations(t.logger, t.client).
-		ListS3(t.ctx, conn.ListS3Params{})
+	resources, err := t.client.ListS3(t.ctx, conn.ListS3Params{})
 	if err != nil {
 		t.logger.WithError(err).
 			Error("unable to list resources")

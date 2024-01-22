@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -17,26 +16,24 @@ type ListS3Result struct {
 	CreationTime *time.Time
 }
 
-type S3Operations interface {
+type S3Client interface {
 	ListS3(ctx context.Context, p ListS3Params) ([]ListS3Result, error)
 }
 
-type defaultS3Operations struct {
-	logger *logrus.Entry
+type s3Client struct {
 	client *s3.Client
 }
 
-var _ S3Operations = (*defaultS3Operations)(nil)
+var _ S3Client = (*s3Client)(nil)
 
-func NewDefaultS3Operations(logger *logrus.Entry, client *s3.Client) S3Operations {
-	return &defaultS3Operations{
-		logger: logger,
+func newS3Client(client *s3.Client) S3Client {
+	return &s3Client{
 		client: client,
 	}
 }
 
-func (op *defaultS3Operations) ListS3(ctx context.Context, _ ListS3Params) ([]ListS3Result, error) {
-	buckets, err := op.client.ListBuckets(ctx, nil)
+func (c *s3Client) ListS3(ctx context.Context, _ ListS3Params) ([]ListS3Result, error) {
+	buckets, err := c.client.ListBuckets(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

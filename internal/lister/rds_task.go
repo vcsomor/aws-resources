@@ -2,7 +2,6 @@ package lister
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/sirupsen/logrus"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
 	"github.com/vcsomor/aws-resources/internal/threads"
@@ -11,7 +10,7 @@ import (
 type rdsTask struct {
 	ctx    context.Context
 	logger *logrus.Entry
-	client *rds.Client
+	client conn.RDSClient
 }
 
 type rdsTaskResult struct {
@@ -24,7 +23,7 @@ var _ threads.Task = (*rdsTask)(nil)
 func newRDSTask(
 	ctx context.Context,
 	logger *logrus.Entry,
-	client *rds.Client,
+	client conn.RDSClient,
 ) threads.Task {
 	return &rdsTask{
 		ctx:    ctx,
@@ -34,8 +33,7 @@ func newRDSTask(
 }
 
 func (t *rdsTask) Execute() any {
-	resources, err := conn.NewDefaultRDSOperations(t.logger, t.client).
-		ListRDS(t.ctx, conn.ListRDSParams{})
+	resources, err := t.client.ListRDS(t.ctx, conn.ListRDSParams{})
 	if err != nil {
 		t.logger.WithError(err).
 			Error("unable to list resources")
