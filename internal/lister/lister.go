@@ -42,7 +42,7 @@ type defaultLister struct {
 	regions       []string
 
 	taskMtx     sync.Mutex
-	taskFutures []*threads.TaskFuture
+	taskFutures []*threads.Future
 	results     [][]Result
 }
 
@@ -69,7 +69,13 @@ func CmdListResources(command *cobra.Command, _ []string) {
 
 	logger.Debugf("regions: %v", regions)
 
-	threadpool := threads.NewThreadpool(threadCount)
+	threadpool, err := threads.NewThreadpool(threadCount)
+	if err != nil {
+		logger.WithError(err).
+			Error("threadpool error")
+		return
+	}
+
 	defer func() {
 		if threadpool != nil {
 			threadpool.Shutdown()
@@ -171,7 +177,7 @@ func (l *defaultLister) startTask(task threads.Task) error {
 func (l *defaultLister) fetchResults() (results []Result) {
 	for _, tf := range l.taskFutures {
 		f := (*tf)
-		rawResult := f.Get()
+		rawResult := f.GetWait()
 		if taskResult, ok := rawResult.(s3TaskResult); ok {
 			if err := taskResult.error; err == nil {
 				results = append(results, taskResult.results...)
