@@ -26,9 +26,10 @@ func TestThreadPool(t *testing.T) {
 	)
 
 	start := time.Now()
-	var taskFutures []TaskFuture
+	var taskFutures []Future
 
-	mgr := NewThreadpool(threads)
+	mgr, err := NewThreadpool(threads)
+	assert.Nil(t, err)
 	for i := 0; i < tasks; i++ {
 		tf, err := mgr.SubmitTask(&testTask{
 			sleep:  1 * time.Second,
@@ -40,7 +41,7 @@ func TestThreadPool(t *testing.T) {
 	}
 
 	for _, tf := range taskFutures {
-		resultRaw := tf.Get()
+		resultRaw := tf.GetWait()
 		result, ok := resultRaw.(string)
 		assert.Truef(t, ok, "result is not a string")
 		assert.NotNilf(t, result, "result is nil")
