@@ -33,7 +33,7 @@ func newRDSTask(
 }
 
 func (t *rdsTask) Execute() any {
-	resources, err := t.client.ListRDS(t.ctx, conn.ListRDSParams{})
+	resources, err := t.client.List(t.ctx, conn.ListRDSParams{})
 	if err != nil {
 		t.logger.WithError(err).
 			Error("unable to list resources")

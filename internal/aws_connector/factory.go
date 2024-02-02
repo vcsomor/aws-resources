@@ -10,7 +10,7 @@ import (
 )
 
 type ClientFactory interface {
-	S3Client(ctx context.Context) (S3Client, error)
+	S3Client(ctx context.Context, region *string) (S3Client, error)
 	RDSClient(ctx context.Context, region *string) (RDSClient, error)
 }
 
@@ -26,8 +26,8 @@ func NewClientFactory(logger *logrus.Logger) ClientFactory {
 	}
 }
 
-func (f *defaultAwsClientFactory) S3Client(ctx context.Context) (S3Client, error) {
-	cfg, err := f.loadConfig(ctx, nil)
+func (f *defaultAwsClientFactory) S3Client(ctx context.Context, region *string) (S3Client, error) {
+	cfg, err := f.loadConfig(ctx, region)
 	log := f.logger.WithField("client", "S3")
 
 	if err != nil {
