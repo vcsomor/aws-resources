@@ -16,9 +16,9 @@ type listTask struct {
 
 type ListResultRDSData struct {
 	Arn          string
-	Region       string
 	ID           string
 	CreationTime *time.Time
+	Tags         map[string]*string
 }
 
 type ListResult struct {
@@ -52,9 +52,9 @@ func (t *listTask) Execute() any {
 	for _, res := range resources {
 		rdsInstances = append(rdsInstances, ListResultRDSData{
 			Arn:          res.Arn,
-			Region:       "TODO",
 			ID:           res.ID,
 			CreationTime: res.CreateTime,
+			Tags:         res.Tags,
 		})
 	}
 

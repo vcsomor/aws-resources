@@ -14,6 +14,7 @@ type ListRDSResult struct {
 	Arn        string
 	ID         string
 	CreateTime *time.Time
+	Tags       map[string]*string
 }
 
 type RDSClient interface {
@@ -44,13 +45,14 @@ func (c *rdsClient) List(ctx context.Context, _ ListRDSParams) ([]ListRDSResult,
 			Arn:        *r.DBInstanceArn,
 			ID:         *r.DBInstanceIdentifier,
 			CreateTime: r.InstanceCreateTime,
+			Tags:       transformRTagsList(r.TagList),
 		})
 	}
 
 	return res, nil
 }
 
-func transformRDSListTags(tags []types.Tag) map[string]*string {
+func transformRTagsList(tags []types.Tag) map[string]*string {
 	res := map[string]*string{}
 	for _, t := range tags {
 		if t.Key == nil {

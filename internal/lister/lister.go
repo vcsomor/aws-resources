@@ -17,15 +17,28 @@ import (
 	"time"
 )
 
-type Result struct {
+type ResultDataType interface {
+	S3Data | RDSData
+}
+
+type Result[T ResultDataType] struct {
 	Arn          string     `json:"arn"`
-	Region       string     `json:"region"`
 	ID           string     `json:"id"`
 	CreationTime *time.Time `json:"creationTime"`
+
+	Data T `json:"data"`
+}
+
+type S3Data struct {
+	LocationConstraint string `json:"locationConstraint"`
+}
+
+type RDSData struct {
+	Tags map[string]*string `json:"tags"`
 }
 
 type Lister interface {
-	List(ctx context.Context) []Result
+	List(ctx context.Context) []any
 }
 
 type defaultLister struct {
@@ -100,8 +113,8 @@ func NewDefaultLister(
 	}
 }
 
-func (l *defaultLister) List(ctx context.Context) []Result {
-	res := []Result{}
+func (l *defaultLister) List(ctx context.Context) []any {
+	var res []any
 
 	res = append(res, l.listS3(ctx, l.regions)...)
 	res = append(res, l.listRDS(ctx, l.regions)...)
@@ -109,7 +122,7 @@ func (l *defaultLister) List(ctx context.Context) []Result {
 	return res
 }
 
-func (l *defaultLister) listS3(ctx context.Context, regions []string) (results []Result) {
+func (l *defaultLister) listS3(ctx context.Context, regions []string) (results []any) {
 	logger := l.logger.WithField(logKeyResourceType, s3ResourceType)
 
 	client, err := l.clientFactory.S3Client(ctx, nil)
@@ -161,7 +174,7 @@ func (l *defaultLister) listS3(ctx context.Context, regions []string) (results [
 	return
 }
 
-func (l *defaultLister) listRDS(ctx context.Context, regions []string) (results []Result) {
+func (l *defaultLister) listRDS(ctx context.Context, regions []string) (results []any) {
 	logger := l.logger.
 		WithField(logKeyResourceType, rdsResourceType)
 
@@ -204,11 +217,13 @@ func (l *defaultLister) listRDS(ctx context.Context, regions []string) (results 
 		}
 
 		for _, rds := range listResult.RDSInstances {
-			results = append(results, Result{
+			results = append(results, Result[RDSData]{
 				Arn:          rds.Arn,
-				Region:       rds.Region,
 				ID:           rds.ID,
 				CreationTime: rds.CreationTime,
+				Data: RDSData{
+					Tags: rds.Tags,
+				},
 			})
 		}
 	}
@@ -226,28 +241,30 @@ func (l *defaultLister) rdsTaskInRegion(ctx context.Context, logger *logrus.Entr
 	return rds_tasks.NewListTask(ctx, logger, client), nil
 }
 
-func writeResult(res []Result) {
-	_, err := json.MarshalIndent(res, "", "\t")
+func writeResult(res []any) {
+	js, err := json.MarshalIndent(res, "", "\t")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to display data %s", err)
 		return
 	}
-	//fmt.Printf("%s\n", js)
+	fmt.Printf("%s\n", js)
 }
 
-func aResultOfBucketOperations(res s3_tasks.GetRegionResult, buckets []s3_tasks.ListTaskBucketData) Result {
+func aResultOfBucketOperations(res s3_tasks.GetRegionResult, buckets []s3_tasks.ListTaskBucketData) Result[S3Data] {
 	for _, b := range buckets {
 		name := res.BucketName
 		if name == b.Name {
-			return Result{
+			return Result[S3Data]{
 				Arn:          fmt.Sprintf("arn:aws:s3:::%s", name),
-				Region:       res.Region,
 				ID:           name,
 				CreationTime: b.Created,
+				Data: S3Data{
+					LocationConstraint: res.Region,
+				},
 			}
 		}
 	}
-	return Result{}
+	return Result[S3Data]{}
 }
 
 func regionFiler(region string, regions []string) bool {
