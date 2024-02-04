@@ -1,34 +1,34 @@
-package lister
+package s3_tasks
 
 import (
 	"context"
 	"github.com/sirupsen/logrus"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
-	"github.com/vcsomor/aws-resources/internal/threads"
+	"github.com/vcsomor/aws-resources/internal/executor"
 )
 
-type s3GetRegionTask struct {
+type getRegionTask struct {
 	ctx        context.Context
 	logger     *logrus.Entry
 	client     conn.S3Client
 	bucketName string
 }
 
-type s3GetRegionResult struct {
-	bucketName string
-	region     string
-	error      error
+type GetRegionResult struct {
+	BucketName string
+	Region     string
+	Error      error
 }
 
-var _ threads.Task = (*s3GetRegionTask)(nil)
+var _ executor.Task = (*getRegionTask)(nil)
 
-func newS3GetRegionTask(
+func NewS3GetRegionTask(
 	ctx context.Context,
 	logger *logrus.Entry,
 	client conn.S3Client,
 	bucketName string,
-) threads.Task {
-	return &s3GetRegionTask{
+) executor.Task {
+	return &getRegionTask{
 		ctx:        ctx,
 		logger:     logger,
 		client:     client,
@@ -36,22 +36,22 @@ func newS3GetRegionTask(
 	}
 }
 
-func (t *s3GetRegionTask) Execute() any {
+func (t *getRegionTask) Execute() any {
 	res, err := t.client.GetRegion(t.ctx, conn.NewGetS3RegionParams(t.bucketName))
 	if err != nil {
 		t.logger.WithError(err).
 			Error("unable to get region")
-		return s3GetRegionResult{
-			bucketName: t.bucketName,
-			error:      err,
+		return GetRegionResult{
+			BucketName: t.bucketName,
+			Error:      err,
 		}
 	}
 
 	t.logger.Debugf("bucket region fetched")
 
-	return s3GetRegionResult{
-		bucketName: res.Name,
-		region:     res.Region,
-		error:      nil,
+	return GetRegionResult{
+		BucketName: res.Name,
+		Region:     res.Region,
+		Error:      nil,
 	}
 }

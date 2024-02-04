@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vcsomor/aws-resources/config"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
-	"github.com/vcsomor/aws-resources/internal/threads"
+	"github.com/vcsomor/aws-resources/internal/executor"
+	"github.com/vcsomor/aws-resources/internal/lister/rds_tasks"
+	"github.com/vcsomor/aws-resources/internal/lister/s3_tasks"
 	"github.com/vcsomor/aws-resources/log"
 	"os"
 	"strconv"
@@ -28,7 +30,7 @@ type Lister interface {
 
 type defaultLister struct {
 	clientFactory conn.ClientFactory
-	threadpool    threads.Threadpool
+	executor      executor.SynchronousExecutor
 	logger        *logrus.Logger
 	regions       []string
 }
@@ -56,7 +58,7 @@ func CmdListResources(command *cobra.Command, _ []string) {
 
 	logger.Debugf("regions: %v", regions)
 
-	threadpool, err := threads.NewThreadpool(threadCount)
+	threadpool, err := executor.NewThreadpool(threadCount)
 	if err != nil {
 		logger.WithError(err).
 			Error("threadpool error")
@@ -72,7 +74,7 @@ func CmdListResources(command *cobra.Command, _ []string) {
 	l := NewDefaultLister(
 		logger,
 		conn.NewClientFactory(logger),
-		threadpool,
+		executor.NewSynchronousExecutor(threadpool),
 		regions,
 	)
 	resources := l.List(context.TODO())
@@ -87,12 +89,12 @@ func CmdListResources(command *cobra.Command, _ []string) {
 func NewDefaultLister(
 	logger *logrus.Logger,
 	clientFactory conn.ClientFactory,
-	threadpoolFactory threads.Threadpool,
+	executor executor.SynchronousExecutor,
 	regions []string,
 ) Lister {
 	return &defaultLister{
 		clientFactory: clientFactory,
-		threadpool:    threadpoolFactory,
+		executor:      executor,
 		logger:        logger,
 		regions:       regions,
 	}
@@ -117,52 +119,43 @@ func (l *defaultLister) listS3(ctx context.Context, regions []string) (results [
 		return
 	}
 
-	listResult, err := l.threadpool.SubmitTask(newS3ListTask(ctx, logger, client))
+	listResult, err := l.executor.Execute(s3_tasks.NewListTask(ctx, logger, client))
 	if err != nil {
 		logger.WithError(err).
 			Error("unable to start listing task")
-	}
-
-	s3Buckets, ok := listResult.GetWait().(s3ListTaskResult)
-	if !ok {
-		logger.Error("unable to get s3 list result, invalid type")
 		return
 	}
 
-	if err = s3Buckets.error; err != nil {
+	s3Buckets := listResult.(s3_tasks.ListTaskResult)
+	if err = s3Buckets.Error; err != nil {
 		logger.WithError(err).
 			Error("bucket fetch error")
 		return
 	}
 
-	var tasks []threads.Future
-	for _, b := range s3Buckets.buckets {
-		f, errSubmit := l.threadpool.SubmitTask(newS3GetRegionTask(ctx, logger, client, b.name))
-		if errSubmit != nil {
-			logger.WithError(errSubmit).
-				WithField("bucket-name", b.name).
-				Error("unable to submit task")
-			continue
-		}
-		tasks = append(tasks, f)
+	var getRegionTasks []executor.Task
+	for _, b := range s3Buckets.Buckets {
+		getRegionTasks = append(getRegionTasks, s3_tasks.NewS3GetRegionTask(ctx, logger, client, b.Name))
 	}
 
-	for _, t := range tasks {
-		getResult, regionOK := t.GetWait().(s3GetRegionResult)
-		if !regionOK {
-			logger.Error("unable to assert return value")
-			continue
-		}
+	getRegionResults := l.executor.ExecuteAll(getRegionTasks)
 
-		if err = getResult.error; err != nil {
+	for _, r := range getRegionResults {
+		if err = r.Error; err != nil {
 			logger.WithError(err).
 				Error("error while fetching the region")
 			continue
 		}
 
-		region := getResult.region
-		if regionFiler(region, regions) {
-			results = append(results, aResultOfBucketOperations(getResult.bucketName, s3Buckets.buckets, region))
+		getRegionResult := r.Outcome.(s3_tasks.GetRegionResult)
+		if err = getRegionResult.Error; err != nil {
+			logger.WithError(err).
+				Error("region fetch error")
+			continue
+		}
+
+		if regionFiler(getRegionResult.Region, regions) {
+			results = append(results, aResultOfBucketOperations(getRegionResult, s3Buckets.Buckets))
 		}
 	}
 	return
@@ -172,42 +165,45 @@ func (l *defaultLister) listRDS(ctx context.Context, regions []string) (results 
 	logger := l.logger.
 		WithField(logKeyResourceType, rdsResourceType)
 
-	var tasks []threads.Future
+	var tasks []executor.Task
 	if regions == nil {
-		f, err := l.startListRdsInRegion(ctx, logger.WithField(logKeyRegion, "default"), nil)
+		t, err := l.rdsTaskInRegion(ctx, logger.WithField(logKeyRegion, "default"), nil)
 		if err != nil {
 			logger.WithError(err).
-				Error("error while fetching the rds instances")
+				Error("unable to add RDS list task in default region")
 		} else {
-			tasks = append(tasks, f)
+			tasks = append(tasks, t)
 		}
 	} else {
 		for _, region := range regions {
 			currRegion := region
-			f, err := l.startListRdsInRegion(ctx, logger.WithField(logKeyRegion, region), &currRegion)
+			t, err := l.rdsTaskInRegion(ctx, logger.WithField(logKeyRegion, region), &currRegion)
 			if err != nil {
 				logger.WithError(err).
-					Error("error while fetching the rds instances")
+					Errorf("unable to add RDS list task in region")
 				continue
 			}
-			tasks = append(tasks, f)
+			tasks = append(tasks, t)
 		}
 	}
 
-	for _, t := range tasks {
-		taskResult, ok := t.GetWait().(rdsTaskResult)
-		if !ok {
-			logger.Error("unable to assert return value")
-			continue
-		}
+	execResults := l.executor.ExecuteAll(tasks)
 
-		if err := taskResult.error; err != nil {
+	for _, r := range execResults {
+		if err := r.Error; err != nil {
 			logger.WithError(err).
 				Error("error while fetching the RDS instances")
 			continue
 		}
 
-		for _, rds := range taskResult.results {
+		listResult := r.Outcome.(rds_tasks.ListResult)
+		if err := listResult.Error; err != nil {
+			logger.WithError(err).
+				Error("rds list task error")
+			continue
+		}
+
+		for _, rds := range listResult.RDSInstances {
 			results = append(results, Result{
 				Arn:          rds.Arn,
 				Region:       rds.Region,
@@ -219,7 +215,7 @@ func (l *defaultLister) listRDS(ctx context.Context, regions []string) (results 
 	return
 }
 
-func (l *defaultLister) startListRdsInRegion(ctx context.Context, logger *logrus.Entry, region *string) (threads.Future, error) {
+func (l *defaultLister) rdsTaskInRegion(ctx context.Context, logger *logrus.Entry, region *string) (executor.Task, error) {
 	client, err := l.clientFactory.RDSClient(ctx, region)
 	if err != nil {
 		logger.WithError(err).
@@ -227,7 +223,7 @@ func (l *defaultLister) startListRdsInRegion(ctx context.Context, logger *logrus
 		return nil, err
 	}
 
-	return l.threadpool.SubmitTask(newRDSTask(ctx, logger, client))
+	return rds_tasks.NewListTask(ctx, logger, client), nil
 }
 
 func writeResult(res []Result) {
@@ -239,14 +235,15 @@ func writeResult(res []Result) {
 	fmt.Printf("%s\n", js)
 }
 
-func aResultOfBucketOperations(name string, buckets []s3ListTaskResultItem, region string) Result {
+func aResultOfBucketOperations(res s3_tasks.GetRegionResult, buckets []s3_tasks.ListTaskBucketData) Result {
 	for _, b := range buckets {
-		if name == b.name {
+		name := res.BucketName
+		if name == b.Name {
 			return Result{
 				Arn:          fmt.Sprintf("arn:aws:s3:::%s", name),
-				Region:       region,
+				Region:       res.Region,
 				ID:           name,
-				CreationTime: b.created,
+				CreationTime: b.Created,
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-package threads
+package executor
 
 import (
 	"github.com/panjf2000/ants/v2"
