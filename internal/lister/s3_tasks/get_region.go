@@ -50,8 +50,17 @@ func (t *getRegionTask) Execute() any {
 	t.logger.Debugf("bucket region fetched")
 
 	return GetRegionResult{
-		BucketName: res.Name,
+		BucketName: t.bucketName,
 		Region:     res.Region,
 		Error:      nil,
 	}
+}
+
+func FindRegionResult(bucketName string, results []GetRegionResult) GetRegionResult {
+	for _, result := range results {
+		if result.BucketName == bucketName {
+			return result
+		}
+	}
+	return GetRegionResult{}
 }

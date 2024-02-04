@@ -30,7 +30,8 @@ type Result[T ResultDataType] struct {
 }
 
 type S3Data struct {
-	LocationConstraint string `json:"locationConstraint"`
+	LocationConstraint string             `json:"locationConstraint"`
+	Tags               map[string]*string `json:"tags"`
 }
 
 type RDSData struct {
@@ -152,7 +153,9 @@ func (l *defaultLister) listS3(ctx context.Context, regions []string) (results [
 	}
 
 	getRegionResults := l.executor.ExecuteAll(getRegionTasks)
+	var getRegionOutcomes []s3_tasks.GetRegionResult
 
+	var getTagsTasks []executor.Task
 	for _, r := range getRegionResults {
 		if err = r.Error; err != nil {
 			logger.WithError(err).
@@ -168,9 +171,34 @@ func (l *defaultLister) listS3(ctx context.Context, regions []string) (results [
 		}
 
 		if regionFiler(getRegionResult.Region, regions) {
-			results = append(results, aResultOfBucketOperations(getRegionResult, s3Buckets.Buckets))
+			getTagsClient, errClient := l.clientFactory.S3Client(ctx, &getRegionResult.Region)
+			if errClient != nil {
+				logger.WithError(errClient).
+					Error("client build error")
+				continue
+			}
+			getRegionOutcomes = append(getRegionOutcomes, getRegionResult)
+			getTagsTasks = append(getTagsTasks, s3_tasks.NewS3GetTagsTask(ctx, logger, getTagsClient, getRegionResult.BucketName))
 		}
 	}
+
+	getTagsResult := l.executor.ExecuteAll(getTagsTasks)
+	for _, res := range getTagsResult {
+		if res.Error != nil {
+			logger.WithError(err).
+				Error("tags fetch error")
+			continue
+
+		}
+		gtRes := res.Outcome.(s3_tasks.GetTagsResult)
+		bucketName := gtRes.BucketName
+		results = append(results, anS3Result(
+			s3_tasks.FindListBucketData(bucketName, s3Buckets.Buckets),
+			s3_tasks.FindRegionResult(bucketName, getRegionOutcomes),
+			gtRes,
+		))
+	}
+
 	return
 }
 
@@ -250,21 +278,16 @@ func writeResult(res []any) {
 	fmt.Printf("%s\n", js)
 }
 
-func aResultOfBucketOperations(res s3_tasks.GetRegionResult, buckets []s3_tasks.ListTaskBucketData) Result[S3Data] {
-	for _, b := range buckets {
-		name := res.BucketName
-		if name == b.Name {
-			return Result[S3Data]{
-				Arn:          fmt.Sprintf("arn:aws:s3:::%s", name),
-				ID:           name,
-				CreationTime: b.Created,
-				Data: S3Data{
-					LocationConstraint: res.Region,
-				},
-			}
-		}
+func anS3Result(baseData s3_tasks.ListTaskBucketData, region s3_tasks.GetRegionResult, tagsResult s3_tasks.GetTagsResult) Result[S3Data] {
+	return Result[S3Data]{
+		Arn:          fmt.Sprintf("arn:aws:s3:::%s", baseData.Name),
+		ID:           baseData.Name,
+		CreationTime: baseData.Created,
+		Data: S3Data{
+			LocationConstraint: region.Region,
+			Tags:               tagsResult.Tags,
+		},
 	}
-	return Result[S3Data]{}
 }
 
 func regionFiler(region string, regions []string) bool {

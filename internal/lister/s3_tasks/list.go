@@ -59,3 +59,12 @@ func (t *listTask) Execute() any {
 
 	return ListTaskResult{Buckets: results}
 }
+
+func FindListBucketData(bucketName string, dt []ListTaskBucketData) ListTaskBucketData {
+	for _, d := range dt {
+		if d.Name == bucketName {
+			return d
+		}
+	}
+	return ListTaskBucketData{}
+}
