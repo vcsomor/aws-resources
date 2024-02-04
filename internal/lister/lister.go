@@ -227,12 +227,12 @@ func (l *defaultLister) rdsTaskInRegion(ctx context.Context, logger *logrus.Entr
 }
 
 func writeResult(res []Result) {
-	js, err := json.MarshalIndent(res, "", "\t")
+	_, err := json.MarshalIndent(res, "", "\t")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to display data %s", err)
 		return
 	}
-	fmt.Printf("%s\n", js)
+	//fmt.Printf("%s\n", js)
 }
 
 func aResultOfBucketOperations(res s3_tasks.GetRegionResult, buckets []s3_tasks.ListTaskBucketData) Result {

@@ -3,10 +3,12 @@ package aws_connector
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type ClientFactory interface {
@@ -53,8 +55,25 @@ func (f *defaultAwsClientFactory) RDSClient(ctx context.Context, region *string)
 }
 
 func (f *defaultAwsClientFactory) loadConfig(ctx context.Context, region *string) (aws.Config, error) {
-	if region != nil {
-		return config.LoadDefaultConfig(ctx, config.WithRegion(*region))
+	const MaxAttempts = 10
+	const MaxBackoffDelay = 10 * time.Second
+
+	opts := []func(*config.LoadOptions) error{
+		config.WithRetryer(adaptiveRetryer(MaxAttempts, MaxBackoffDelay)),
 	}
-	return config.LoadDefaultConfig(ctx)
+
+	if region != nil {
+		opts = append(opts, config.WithRegion(*region))
+	}
+
+	return config.LoadDefaultConfig(ctx, opts...)
+}
+
+func adaptiveRetryer(maxAttempts int, maxBackoffDelay time.Duration) func() aws.Retryer {
+	return func() aws.Retryer {
+		return retry.AddWithMaxBackoffDelay(
+			retry.AddWithMaxAttempts(
+				retry.NewAdaptiveMode(), maxAttempts),
+			maxBackoffDelay)
+	}
 }
