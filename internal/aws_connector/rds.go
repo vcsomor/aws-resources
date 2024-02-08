@@ -3,6 +3,7 @@ package aws_connector
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"time"
 )
 
@@ -13,10 +14,11 @@ type ListRDSResult struct {
 	Arn        string
 	ID         string
 	CreateTime *time.Time
+	Tags       map[string]*string
 }
 
 type RDSClient interface {
-	ListRDS(ctx context.Context, p ListRDSParams) ([]ListRDSResult, error)
+	List(ctx context.Context, p ListRDSParams) ([]ListRDSResult, error)
 }
 
 type rdsClient struct {
@@ -31,20 +33,32 @@ func newRDSClient(client *rds.Client) RDSClient {
 	}
 }
 
-func (c *rdsClient) ListRDS(ctx context.Context, _ ListRDSParams) ([]ListRDSResult, error) {
-	describeResult, err := c.client.DescribeDBInstances(ctx, nil)
+func (c *rdsClient) List(ctx context.Context, _ ListRDSParams) ([]ListRDSResult, error) {
+	listResult, err := c.client.DescribeDBInstances(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var res []ListRDSResult
-	for _, r := range describeResult.DBInstances {
+	for _, r := range listResult.DBInstances {
 		res = append(res, ListRDSResult{
 			Arn:        *r.DBInstanceArn,
 			ID:         *r.DBInstanceIdentifier,
 			CreateTime: r.InstanceCreateTime,
+			Tags:       transformRTagsList(r.TagList),
 		})
 	}
 
 	return res, nil
+}
+
+func transformRTagsList(tags []types.Tag) map[string]*string {
+	res := map[string]*string{}
+	for _, t := range tags {
+		if t.Key == nil {
+			continue
+		}
+		res[*t.Key] = t.Value
+	}
+	return res
 }
