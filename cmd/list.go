@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/vcsomor/aws-resources/internal/lister"
+	listcmd "github.com/vcsomor/aws-resources/internal/lister/cmd"
 )
 
 func listCommand() *cobra.Command {
@@ -10,7 +10,7 @@ func listCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List AWS resources.",
 		Long:  "Listing the AWS Resources",
-		Run:   lister.CmdListResources,
+		Run:   listcmd.ListResources,
 	}
 
 	cmd.PersistentFlags().
