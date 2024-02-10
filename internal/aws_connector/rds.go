@@ -45,14 +45,14 @@ func (c *rdsClient) List(ctx context.Context, _ ListRDSParams) ([]ListRDSResult,
 			Arn:        *r.DBInstanceArn,
 			ID:         *r.DBInstanceIdentifier,
 			CreateTime: r.InstanceCreateTime,
-			Tags:       transformRTagsList(r.TagList),
+			Tags:       transformTagsList(r.TagList),
 		})
 	}
 
 	return res, nil
 }
 
-func transformRTagsList(tags []types.Tag) map[string]*string {
+func transformTagsList(tags []types.Tag) map[string]*string {
 	res := map[string]*string{}
 	for _, t := range tags {
 		if t.Key == nil {

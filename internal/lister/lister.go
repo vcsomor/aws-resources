@@ -5,38 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/vcsomor/aws-resources/config"
 	conn "github.com/vcsomor/aws-resources/internal/aws_connector"
 	"github.com/vcsomor/aws-resources/internal/executor"
 	"github.com/vcsomor/aws-resources/internal/lister/rds_tasks"
 	"github.com/vcsomor/aws-resources/internal/lister/s3_tasks"
-	"github.com/vcsomor/aws-resources/log"
 	"os"
-	"strconv"
-	"time"
+	"slices"
 )
-
-type ResultDataType interface {
-	S3Data | RDSData
-}
-
-type Result[T ResultDataType] struct {
-	Arn          string     `json:"arn"`
-	ID           string     `json:"id"`
-	CreationTime *time.Time `json:"creationTime"`
-
-	Data T `json:"data"`
-}
-
-type S3Data struct {
-	LocationConstraint string             `json:"locationConstraint"`
-	Tags               map[string]*string `json:"tags"`
-}
-
-type RDSData struct {
-	Tags map[string]*string `json:"tags"`
-}
 
 type Lister interface {
 	List(ctx context.Context) []any
@@ -46,79 +21,22 @@ type defaultLister struct {
 	clientFactory conn.ClientFactory
 	executor      executor.SynchronousExecutor
 	logger        *logrus.Logger
-	regions       []string
+
+	regions   []string
+	resources []string
 }
 
 var _ Lister = (*defaultLister)(nil)
 
-// CmdListResources is the command entry point
-func CmdListResources(command *cobra.Command, _ []string) {
-	logger := log.NewLogger(config.Config())
-
-	th := command.Flag("threads").
-		Value.
-		String()
-
-	threadCount, err := strconv.Atoi(th)
-	if err != nil {
-		logger.WithError(err).
-			Error("invalid thread count")
-		return
-	}
-
-	regions := parseRegions(command.Flag("regions").
-		Value.
-		String())
-
-	logger.Debugf("regions: %v", regions)
-
-	threadpool, err := executor.NewThreadpool(threadCount)
-	if err != nil {
-		logger.WithError(err).
-			Error("threadpool error")
-		return
-	}
-
-	defer func() {
-		if threadpool != nil {
-			threadpool.Shutdown()
-		}
-	}()
-
-	l := NewDefaultLister(
-		logger,
-		conn.NewClientFactory(logger),
-		executor.NewSynchronousExecutor(threadpool),
-		regions,
-	)
-	resources := l.List(context.TODO())
-
-	logger.WithField(logKeyResourceCount, len(resources)).
-		Debug("resources listed")
-
-	// TODO vcsomor do the write
-	writeResult(resources)
-}
-
-func NewDefaultLister(
-	logger *logrus.Logger,
-	clientFactory conn.ClientFactory,
-	executor executor.SynchronousExecutor,
-	regions []string,
-) Lister {
-	return &defaultLister{
-		clientFactory: clientFactory,
-		executor:      executor,
-		logger:        logger,
-		regions:       regions,
-	}
-}
-
 func (l *defaultLister) List(ctx context.Context) []any {
 	var res []any
 
-	res = append(res, l.listS3(ctx, l.regions)...)
-	res = append(res, l.listRDS(ctx, l.regions)...)
+	if slices.Contains(l.resources, "s3") {
+		res = append(res, l.listS3(ctx, l.regions)...)
+	}
+	if slices.Contains(l.resources, "rds") {
+		res = append(res, l.listRDS(ctx, l.regions)...)
+	}
 
 	return res
 }

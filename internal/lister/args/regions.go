@@ -1,6 +1,9 @@
-package lister
+package args
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 const regionSeparator = ","
 
@@ -69,24 +72,33 @@ func allRegions() []string {
 	}
 }
 
-func parseRegions(regions string) []string {
-	r := sanitizeRegions(regions)
+func ParseRegions(regions string) []string {
+	r := sanitizeRegionArgs(regions)
 
 	if len(r) == 0 {
 		return allRegions()
 	}
 
+	if r == regionAll {
+		return allRegions()
+	}
+
+	desiredRegions := strings.Split(r, regionSeparator)
+	if len(desiredRegions) == 0 {
+		return allRegions()
+	}
+
 	var result []string
-	for _, region := range strings.Split(r, regionSeparator) {
-		if region == regionAll {
-			return allRegions()
+	for _, region := range allRegions() {
+		if !slices.Contains(desiredRegions, region) {
+			continue
 		}
 		result = append(result, region)
 	}
 	return result
 }
 
-func sanitizeRegions(regions string) string {
+func sanitizeRegionArgs(regions string) string {
 	r := regions
 	r = strings.ReplaceAll(r, " ", "")
 	r = strings.ReplaceAll(r, ";", "")
@@ -95,5 +107,4 @@ func sanitizeRegions(regions string) string {
 	r = strings.ReplaceAll(r, "\t", "")
 	r = strings.ReplaceAll(r, "\r", "")
 	return strings.ToLower(r)
-
 }
