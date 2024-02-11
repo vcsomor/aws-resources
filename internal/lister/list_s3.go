@@ -32,7 +32,11 @@ func (l *taskBasedLister) listS3(ctx context.Context) []any {
 	return assembleResults(buckets.Buckets, regionMappings, tagMappings)
 }
 
-func assembleResults(buckets []s3_tasks.ListTaskBucketData, regionMappings map[string]string, tags map[string]map[string]*string) []any {
+func assembleResults(
+	buckets []s3_tasks.ListTaskBucketData,
+	regionMappings map[string]string,
+	tags map[string]map[string]*string,
+) []any {
 	var result []any
 
 	for _, bucket := range buckets {
@@ -66,7 +70,11 @@ func (l *taskBasedLister) fetchAllS3Buckets(ctx context.Context, logger *logrus.
 	return buckets, nil
 }
 
-func (l *taskBasedLister) fetchAllS3BucketRegions(ctx context.Context, logger *logrus.Entry, buckets []s3_tasks.ListTaskBucketData) (map[string]string, error) {
+func (l *taskBasedLister) fetchAllS3BucketRegions(
+	ctx context.Context,
+	logger *logrus.Entry,
+	buckets []s3_tasks.ListTaskBucketData,
+) (map[string]string, error) {
 	client, err := l.clientFactory.S3Client(ctx, nil)
 	if err != nil {
 		return nil,
@@ -100,13 +108,16 @@ func (l *taskBasedLister) fetchAllS3BucketRegions(ctx context.Context, logger *l
 	return result, nil
 }
 
-func (l *taskBasedLister) fetchTagsForBuckets(ctx context.Context, logger *logrus.Entry, mappings map[string]string) map[string]map[string]*string {
+func (l *taskBasedLister) fetchTagsForBuckets(
+	ctx context.Context,
+	logger *logrus.Entry,
+	mappings map[string]string,
+) map[string]map[string]*string {
 	tags := map[string]map[string]*string{}
 
 	var tasks []executor.Task
 	for name, region := range mappings {
 		r := region // avoid taking the address of the auto var
-		// TODO vcsomor client should not retry the NoSuchTagSet error
 		client, errClient := l.clientFactory.S3Client(ctx, &r)
 		if errClient != nil {
 			logger.WithError(errClient).

@@ -95,6 +95,7 @@ func (c *s3Client) GetTags(ctx context.Context, p GetS3BucketTagsParams) (GetS3B
 	}
 
 	res := GetS3BucketTagsResult{
+		Name: p.name,
 		Tags: map[string]*string{},
 	}
 
