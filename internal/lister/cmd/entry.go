@@ -71,7 +71,7 @@ func ListResources(command *cobra.Command, _ []string) {
 		Build()
 	resources := l.List(context.TODO())
 
-	fmt.Printf("Data fetched %s\n", len(resources))
+	fmt.Printf("Data fetched %d\n", len(resources))
 }
 
 func stripArn(arn string) any {
