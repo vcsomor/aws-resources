@@ -1,6 +1,9 @@
 package lister
 
-import "time"
+import (
+	"github.com/vcsomor/aws-resources/internal/lister/writer"
+	"time"
+)
 
 const (
 	logKeyRegion        = "region"
@@ -11,16 +14,12 @@ const (
 	rdsResourceType = "RDS"
 )
 
-type ResultDataType interface {
-	S3Data | RDSData
-}
-
-type Result[T ResultDataType] struct {
+type Result struct {
 	Arn          string     `json:"arn"`
 	ID           string     `json:"id"`
 	CreationTime *time.Time `json:"creationTime"`
 
-	Data T `json:"data"`
+	Data any `json:"data"`
 }
 
 type S3Data struct {
@@ -31,3 +30,5 @@ type S3Data struct {
 type RDSData struct {
 	Tags map[string]*string `json:"tags"`
 }
+
+type ResultBasedWriterFactory func(d Result) writer.Writer

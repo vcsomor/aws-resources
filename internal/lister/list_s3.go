@@ -10,7 +10,7 @@ import (
 	"slices"
 )
 
-func (l *taskBasedLister) listS3(ctx context.Context) []any {
+func (l *taskBasedLister) listS3(ctx context.Context) []Result {
 	logger := l.logger.WithField(logKeyResourceType, s3ResourceType)
 
 	buckets, err := l.fetchAllS3Buckets(ctx, logger)
@@ -36,8 +36,8 @@ func assembleResults(
 	buckets []s3_tasks.ListTaskBucketData,
 	regionMappings map[string]string,
 	tags map[string]map[string]*string,
-) []any {
-	var result []any
+) []Result {
+	var result []Result
 
 	for _, bucket := range buckets {
 		bucketName := bucket.Name
@@ -147,8 +147,8 @@ func (l *taskBasedLister) fetchTagsForBuckets(
 	return tags
 }
 
-func anS3Result(baseData s3_tasks.ListTaskBucketData, region string, tags map[string]*string) Result[S3Data] {
-	return Result[S3Data]{
+func anS3Result(baseData s3_tasks.ListTaskBucketData, region string, tags map[string]*string) Result {
+	return Result{
 		Arn:          fmt.Sprintf("arn:aws:s3:::%s", baseData.Name),
 		ID:           baseData.Name,
 		CreationTime: baseData.Created,

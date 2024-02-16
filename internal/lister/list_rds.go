@@ -7,14 +7,13 @@ import (
 	"github.com/vcsomor/aws-resources/internal/lister/rds_tasks"
 )
 
-func (l *taskBasedLister) listRDS(ctx context.Context) (results []any) {
+func (l *taskBasedLister) listRDS(ctx context.Context) (results []Result) {
 	logger := l.logger.
 		WithField(logKeyResourceType, rdsResourceType)
 
-	return assembleRDBTasksResults(
+	return assembleRDSTasksResults(
 		l.executor.ExecuteAll(
 			l.makeRdsListTasks(ctx, logger)), logger)
-
 }
 
 func (l *taskBasedLister) makeRdsListTasks(ctx context.Context, logger *logrus.Entry) []executor.Task {
@@ -43,8 +42,19 @@ func (l *taskBasedLister) makeRdsListTasks(ctx context.Context, logger *logrus.E
 	return tasks
 }
 
-func assembleRDBTasksResults(execResults []executor.SynchronousResult, logger *logrus.Entry) []any {
-	var results []any
+func (l *taskBasedLister) rdsTaskInRegion(ctx context.Context, logger *logrus.Entry, region *string) (executor.Task, error) {
+	client, err := l.clientFactory.RDSClient(ctx, region)
+	if err != nil {
+		logger.WithError(err).
+			Error("unable to create the client")
+		return nil, err
+	}
+
+	return rds_tasks.NewListTask(ctx, logger, client), nil
+}
+
+func assembleRDSTasksResults(execResults []executor.SynchronousResult, logger *logrus.Entry) []Result {
+	var results []Result
 	for _, r := range execResults {
 		if err := r.Error; err != nil {
 			logger.WithError(err).
@@ -60,7 +70,7 @@ func assembleRDBTasksResults(execResults []executor.SynchronousResult, logger *l
 		}
 
 		for _, rds := range listResult.RDSInstances {
-			results = append(results, Result[RDSData]{
+			results = append(results, Result{
 				Arn:          rds.Arn,
 				ID:           rds.ID,
 				CreationTime: rds.CreationTime,
@@ -71,15 +81,4 @@ func assembleRDBTasksResults(execResults []executor.SynchronousResult, logger *l
 		}
 	}
 	return results
-}
-
-func (l *taskBasedLister) rdsTaskInRegion(ctx context.Context, logger *logrus.Entry, region *string) (executor.Task, error) {
-	client, err := l.clientFactory.RDSClient(ctx, region)
-	if err != nil {
-		logger.WithError(err).
-			Error("unable to create the client")
-		return nil, err
-	}
-
-	return rds_tasks.NewListTask(ctx, logger, client), nil
 }

@@ -67,6 +67,11 @@ func (w jsonFileWriter) Write(obj any) error {
 		return err
 	}
 
+	err = w.makeDirectory(w.to)
+	if err != nil {
+		return err
+	}
+
 	return w.writeResource(bytes)
 }
 
@@ -76,6 +81,10 @@ func (w jsonFileWriter) serialize(obj any) ([]byte, error) {
 
 func (w jsonFileWriter) writeResource(b []byte) error {
 	return writeFile(filepath.Join(w.to, w.opts.outputFile), b)
+}
+
+func (w jsonFileWriter) makeDirectory(to string) error {
+	return os.MkdirAll(to, os.ModePerm)
 }
 
 func writeFile(to string, b []byte) error {

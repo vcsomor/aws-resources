@@ -9,13 +9,14 @@ import (
 )
 
 type Lister interface {
-	List(ctx context.Context) []any
+	List(ctx context.Context) []Result
 }
 
 type taskBasedLister struct {
 	clientFactory conn.ClientFactory
 	executor      executor.SynchronousExecutor
 	logger        *logrus.Logger
+	writerFactory ResultBasedWriterFactory
 
 	regions   []string
 	resources []string
@@ -23,9 +24,7 @@ type taskBasedLister struct {
 
 var _ Lister = (*taskBasedLister)(nil)
 
-func (l *taskBasedLister) List(ctx context.Context) []any {
-	var res []any
-
+func (l *taskBasedLister) List(ctx context.Context) (res []Result) {
 	if slices.Contains(l.resources, "s3") {
 		res = append(res, l.listS3(ctx)...)
 	}
@@ -35,6 +34,16 @@ func (l *taskBasedLister) List(ctx context.Context) []any {
 
 	l.logger.WithField(logKeyResourceCount, len(res)).
 		Debug("resources listed")
+
+	// TODO vcsomor this is temporary here
+	if wf := l.writerFactory; wf != nil {
+		for _, r := range res {
+			if err := wf(r).Write(r); err != nil {
+				l.logger.WithError(err).
+					Errorf("error withing the result for %s", r.Arn)
+			}
+		}
+	}
 
 	return res
 }

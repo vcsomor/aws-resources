@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/vcsomor/aws-resources/config"
@@ -10,9 +9,11 @@ import (
 	"github.com/vcsomor/aws-resources/internal/executor"
 	"github.com/vcsomor/aws-resources/internal/lister"
 	"github.com/vcsomor/aws-resources/internal/lister/args"
+	"github.com/vcsomor/aws-resources/internal/lister/writer"
+	"github.com/vcsomor/aws-resources/internal/lister/writer/jsonfile"
 	"github.com/vcsomor/aws-resources/log"
-	"os"
 	"strconv"
+	"strings"
 )
 
 // ListResources is the command entry point
@@ -53,21 +54,26 @@ func ListResources(command *cobra.Command, _ []string) {
 		}
 	}()
 
-	l := lister.NewLister(logger, conn.NewClientFactory(logger), executor.NewSynchronousExecutor(threadpool)).
-		WithRegions(userRegions).
-		WithResources(userResources).
+	l := lister.NewLister().
+		Dependencies(
+			lister.WithClientFactory(conn.NewClientFactory(logger)),
+			lister.WithLogger(logger),
+			lister.WithExecutor(executor.NewSynchronousExecutor(threadpool)),
+			lister.WithWriterFactory(func(r lister.Result) writer.Writer {
+				w, _ := jsonfile.NewWriter(fmt.Sprintf("./output/%s", stripArn(r.Arn)))
+				return w
+			}),
+		).
+		Parameters(
+			lister.WithRegions(userRegions),
+			lister.WithResources(userResources),
+		).
 		Build()
 	resources := l.List(context.TODO())
 
-	// TODO vcsomor do the write
-	writeResult(resources)
+	fmt.Printf("Data fetched %s\n", len(resources))
 }
 
-func writeResult(res []any) {
-	js, err := json.MarshalIndent(res, "", "\t")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "unable to display data %s", err)
-		return
-	}
-	fmt.Printf("%s\n", js)
+func stripArn(arn string) any {
+	return strings.ReplaceAll(arn, ":", "_")
 }

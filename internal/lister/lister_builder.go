@@ -6,40 +6,95 @@ import (
 	"github.com/vcsomor/aws-resources/internal/executor"
 )
 
-type Builder struct {
+type Dependencies struct {
 	clientFactory conn.ClientFactory
 	executor      executor.SynchronousExecutor
 	logger        *logrus.Logger
+	writerFactory ResultBasedWriterFactory
+}
 
+type DependencyFn func(d *Dependencies)
+
+func WithClientFactory(cf conn.ClientFactory) DependencyFn {
+	return func(d *Dependencies) {
+		d.clientFactory = cf
+	}
+}
+
+func WithExecutor(e executor.SynchronousExecutor) DependencyFn {
+	return func(d *Dependencies) {
+		d.executor = e
+	}
+}
+
+func WithLogger(l *logrus.Logger) DependencyFn {
+	return func(d *Dependencies) {
+		d.logger = l
+	}
+}
+
+func WithWriterFactory(f ResultBasedWriterFactory) DependencyFn {
+	return func(d *Dependencies) {
+		d.writerFactory = f
+	}
+}
+
+type Parameters struct {
 	regions   []string
 	resources []string
 }
 
-func NewLister(logger *logrus.Logger, clientFactory conn.ClientFactory, executor executor.SynchronousExecutor) *Builder {
-	return &Builder{
-		clientFactory: clientFactory,
-		executor:      executor,
-		logger:        logger,
+type ParametersFn func(p *Parameters)
+
+func WithRegions(regions []string) ParametersFn {
+	return func(p *Parameters) {
+		p.regions = append([]string{}, regions...)
 	}
 }
 
-func (b *Builder) WithRegions(regions []string) *Builder {
-	b.regions = regions
+func WithResources(resources []string) ParametersFn {
+	return func(p *Parameters) {
+		p.resources = append([]string{}, resources...)
+	}
+}
+
+type Builder struct {
+	depFns   []DependencyFn
+	paramFns []ParametersFn
+}
+
+func NewLister() *Builder {
+	return &Builder{}
+}
+
+func (b *Builder) Dependencies(depFns ...DependencyFn) *Builder {
+	b.depFns = append(b.depFns, depFns...)
 	return b
 }
 
-func (b *Builder) WithResources(resources []string) *Builder {
-	b.resources = resources
+func (b *Builder) Parameters(paramFns ...ParametersFn) *Builder {
+	b.paramFns = append(b.paramFns, paramFns...)
 	return b
 }
 
 func (b *Builder) Build() Lister {
-	return &taskBasedLister{
-		clientFactory: b.clientFactory,
-		executor:      b.executor,
-		logger:        b.logger,
+	var deps Dependencies
+	for _, fnc := range b.depFns {
+		fnc(&deps)
+	}
 
-		regions:   b.regions,
-		resources: b.resources,
+	var params Parameters
+	for _, fnc := range b.paramFns {
+		fnc(&params)
+	}
+
+	return &taskBasedLister{
+		clientFactory: deps.clientFactory,
+		executor:      deps.executor,
+		logger:        deps.logger,
+		writerFactory: deps.writerFactory,
+
+		regions:   params.regions,
+		resources: params.resources,
 	}
 }
