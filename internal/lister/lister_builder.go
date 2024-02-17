@@ -7,10 +7,11 @@ import (
 )
 
 type Dependencies struct {
-	clientFactory conn.ClientFactory
-	executor      executor.SynchronousExecutor
-	logger        *logrus.Logger
-	writerFactory ResultBasedWriterFactory
+	clientFactory                 conn.ClientFactory
+	executor                      executor.SynchronousExecutor
+	logger                        *logrus.Logger
+	individualResultWriterFactory IndividualResultWriterFactory
+	summarizedResultWriterFactory SummarizedResultWriterFactory
 }
 
 type DependencyFn func(d *Dependencies)
@@ -33,9 +34,15 @@ func WithLogger(l *logrus.Logger) DependencyFn {
 	}
 }
 
-func WithWriterFactory(f ResultBasedWriterFactory) DependencyFn {
+func WithIndividualWriterFactory(f IndividualResultWriterFactory) DependencyFn {
 	return func(d *Dependencies) {
-		d.writerFactory = f
+		d.individualResultWriterFactory = f
+	}
+}
+
+func WithSummarizedWriterFactory(f SummarizedResultWriterFactory) DependencyFn {
+	return func(d *Dependencies) {
+		d.summarizedResultWriterFactory = f
 	}
 }
 
@@ -89,10 +96,11 @@ func (b *Builder) Build() Lister {
 	}
 
 	return &taskBasedLister{
-		clientFactory: deps.clientFactory,
-		executor:      deps.executor,
-		logger:        deps.logger,
-		writerFactory: deps.writerFactory,
+		clientFactory:                 deps.clientFactory,
+		executor:                      deps.executor,
+		logger:                        deps.logger,
+		individualResultWriterFactory: deps.individualResultWriterFactory,
+		summarizedResultWriterFactory: deps.summarizedResultWriterFactory,
 
 		regions:   params.regions,
 		resources: params.resources,

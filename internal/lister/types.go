@@ -19,7 +19,7 @@ type Result struct {
 	ID           string     `json:"id"`
 	CreationTime *time.Time `json:"creationTime"`
 
-	Properties any `json:"data"`
+	Properties any `json:"properties"`
 }
 
 type S3Data struct {
@@ -40,4 +40,5 @@ type RDSData struct {
 	Tags             map[string]*string `json:"tags"`
 }
 
-type ResultBasedWriterFactory func(d Result) writer.Writer
+type IndividualResultWriterFactory func(r Result) writer.Writer
+type SummarizedResultWriterFactory func(r []Result) writer.Writer

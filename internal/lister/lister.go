@@ -13,10 +13,11 @@ type Lister interface {
 }
 
 type taskBasedLister struct {
-	clientFactory conn.ClientFactory
-	executor      executor.SynchronousExecutor
-	logger        *logrus.Logger
-	writerFactory ResultBasedWriterFactory
+	clientFactory                 conn.ClientFactory
+	executor                      executor.SynchronousExecutor
+	logger                        *logrus.Logger
+	individualResultWriterFactory IndividualResultWriterFactory
+	summarizedResultWriterFactory SummarizedResultWriterFactory
 
 	regions   []string
 	resources []string
@@ -36,12 +37,19 @@ func (l *taskBasedLister) List(ctx context.Context) (res []Result) {
 		Debug("resources listed")
 
 	// TODO vcsomor this is temporary here
-	if wf := l.writerFactory; wf != nil {
+	if wf := l.individualResultWriterFactory; wf != nil {
 		for _, r := range res {
 			if err := wf(r).Write(r); err != nil {
 				l.logger.WithError(err).
 					Errorf("error withing the result for %s", r.Arn)
 			}
+		}
+	}
+
+	if wf := l.summarizedResultWriterFactory; wf != nil {
+		if err := wf(res).Write(res); err != nil {
+			l.logger.WithError(err).
+				Errorf("error withing the results")
 		}
 	}
 

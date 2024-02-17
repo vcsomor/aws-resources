@@ -23,13 +23,25 @@ func listCommand() *cobra.Command {
 		String(
 			"regions",
 			"all",
-			`Specify regions to list for e.g.: --regions us-east-1,us-east-2. Use "all" for every region`)
+			`Specify regions to list for e.g.: --regions us-east-1,us-east-2. Use "all" for every supported region.`)
 
 	cmd.PersistentFlags().
 		String(
 			"resources",
 			"all",
-			`Specify resources to list for e.g.: --resources s3,rds. Use "all" for every supported resource`)
+			`Specify resources to list for e.g.: --resources s3,rds. Use "all" for every supported resource type.`)
+
+	cmd.PersistentFlags().
+		String(
+			"output",
+			"stdout",
+			`Specify the output  e.g.: --output stdout,file. Possible values are: "stdout", "file"`)
+
+	cmd.PersistentFlags().
+		String(
+			"target",
+			"resources",
+			`Specify the target directory if file output has been specified.`)
 
 	return &cmd
 }

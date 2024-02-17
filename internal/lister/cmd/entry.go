@@ -11,7 +11,9 @@ import (
 	"github.com/vcsomor/aws-resources/internal/lister/args"
 	"github.com/vcsomor/aws-resources/internal/lister/writer"
 	"github.com/vcsomor/aws-resources/internal/lister/writer/jsonfile"
+	"github.com/vcsomor/aws-resources/internal/lister/writer/stdout"
 	"github.com/vcsomor/aws-resources/log"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -31,15 +33,20 @@ func ListResources(command *cobra.Command, _ []string) {
 		return
 	}
 
-	userRegions := args.ParseRegions(command.Flag("regions").
+	argRegions := args.ParseRegions(command.Flag("regions").
 		Value.
 		String())
-	logger.Debugf("regions: %v", userRegions)
+	logger.Debugf("regions: %v", argRegions)
 
-	userResources := args.ParseResources(command.Flag("resources").
+	argResources := args.ParseResources(command.Flag("resources").
 		Value.
 		String())
-	logger.Debugf("resources: %v", userResources)
+	logger.Debugf("resources: %v", argResources)
+
+	argOutputs := args.ParseOutputs(command.Flag("output").
+		Value.
+		String())
+	logger.Debugf("output: %v", argOutputs)
 
 	threadpool, err := executor.NewThreadpool(threadCount)
 	if err != nil {
@@ -54,21 +61,39 @@ func ListResources(command *cobra.Command, _ []string) {
 		}
 	}()
 
+	deps := []lister.DependencyFn{
+		lister.WithClientFactory(conn.NewClientFactory(logger)),
+		lister.WithLogger(logger),
+		lister.WithExecutor(executor.NewSynchronousExecutor(threadpool)),
+	}
+
+	if slices.Contains(argOutputs, args.OutputStdout) {
+		deps = append(deps, lister.WithSummarizedWriterFactory(func([]lister.Result) writer.Writer {
+			w, _ := stdout.NewWriter(stdout.WithIndentation("\t"))
+			return w
+		}))
+	}
+
+	if slices.Contains(argOutputs, args.OutputFile) {
+		argTarget := command.Flag("target").
+			Value.
+			String()
+		logger.Debugf("target: %v", argTarget)
+
+		deps = append(deps, lister.WithIndividualWriterFactory(func(r lister.Result) writer.Writer {
+			w, _ := jsonfile.NewWriter(
+				argTarget,
+				jsonfile.WithOutputFile(fmt.Sprintf("%s.json", stripArn(r.Arn))),
+				jsonfile.WithIndentation("\t"))
+			return w
+		}))
+	}
+
 	l := lister.NewLister().
-		Dependencies(
-			lister.WithClientFactory(conn.NewClientFactory(logger)),
-			lister.WithLogger(logger),
-			lister.WithExecutor(executor.NewSynchronousExecutor(threadpool)),
-			lister.WithWriterFactory(func(r lister.Result) writer.Writer {
-				w, _ := jsonfile.NewWriter(
-					"./output",
-					jsonfile.WithOutputFile(fmt.Sprintf("%s.json", stripArn(r.Arn))))
-				return w
-			}),
-		).
+		Dependencies(deps...).
 		Parameters(
-			lister.WithRegions(userRegions),
-			lister.WithResources(userResources),
+			lister.WithRegions(argRegions),
+			lister.WithResources(argResources),
 		).
 		Build()
 	resources := l.List(context.TODO())
