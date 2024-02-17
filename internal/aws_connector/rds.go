@@ -14,7 +14,18 @@ type ListRDSResult struct {
 	Arn        string
 	ID         string
 	CreateTime *time.Time
-	Tags       map[string]*string
+
+	InstanceType     *string
+	AvailabilityZone *string
+	AllocatedStorage *int32
+	Engine           *string
+	EngineVersion    *string
+	ReplicaMode      string
+	Status           *string
+	MultiAz          *bool
+	MultiTenant      *bool
+
+	Tags map[string]*string
 }
 
 type RDSClient interface {
@@ -34,18 +45,29 @@ func newRDSClient(client *rds.Client) RDSClient {
 }
 
 func (c *rdsClient) List(ctx context.Context, _ ListRDSParams) ([]ListRDSResult, error) {
-	listResult, err := c.client.DescribeDBInstances(ctx, nil)
+	desc, err := c.client.DescribeDBInstances(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var res []ListRDSResult
-	for _, r := range listResult.DBInstances {
+	for _, r := range desc.DBInstances {
 		res = append(res, ListRDSResult{
-			Arn:        *r.DBInstanceArn,
-			ID:         *r.DBInstanceIdentifier,
+			Arn:        safeDeref(r.DBInstanceArn, ""),
+			ID:         safeDeref(r.DBInstanceIdentifier, ""),
 			CreateTime: r.InstanceCreateTime,
-			Tags:       transformTagsList(r.TagList),
+
+			InstanceType:     r.DBInstanceClass,
+			AvailabilityZone: r.AvailabilityZone,
+			AllocatedStorage: r.AllocatedStorage,
+			Engine:           r.Engine,
+			EngineVersion:    r.EngineVersion,
+			ReplicaMode:      string(r.ReplicaMode),
+			Status:           r.DBInstanceStatus,
+			MultiAz:          r.MultiAZ,
+			MultiTenant:      r.MultiTenant,
+
+			Tags: transformTagsList(r.TagList),
 		})
 	}
 
@@ -61,4 +83,11 @@ func transformTagsList(tags []types.Tag) map[string]*string {
 		res[*t.Key] = t.Value
 	}
 	return res
+}
+
+func safeDeref[T any](p *T, def T) T {
+	if p == nil {
+		return def
+	}
+	return *p
 }

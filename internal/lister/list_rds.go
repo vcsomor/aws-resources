@@ -74,7 +74,17 @@ func assembleRDSTasksResults(execResults []executor.SynchronousResult, logger *l
 				Arn:          rds.Arn,
 				ID:           rds.ID,
 				CreationTime: rds.CreationTime,
-				Data: RDSData{
+				Properties: RDSData{
+					InstanceType:     rds.InstanceType,
+					AvailabilityZone: rds.AvailabilityZone,
+					AllocatedStorage: rds.AllocatedStorage,
+					Engine:           rds.Engine,
+					EngineVersion:    rds.EngineVersion,
+					ReplicaMode:      rds.ReplicaMode,
+					Status:           rds.Status,
+					MultiAz:          rds.MultiAz,
+					MultiTenant:      rds.MultiTenant,
+
 					Tags: rds.Tags,
 				},
 			})

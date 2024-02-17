@@ -60,7 +60,9 @@ func ListResources(command *cobra.Command, _ []string) {
 			lister.WithLogger(logger),
 			lister.WithExecutor(executor.NewSynchronousExecutor(threadpool)),
 			lister.WithWriterFactory(func(r lister.Result) writer.Writer {
-				w, _ := jsonfile.NewWriter(fmt.Sprintf("./output/%s", stripArn(r.Arn)))
+				w, _ := jsonfile.NewWriter(
+					"./output",
+					jsonfile.WithOutputFile(fmt.Sprintf("%s.json", stripArn(r.Arn))))
 				return w
 			}),
 		).

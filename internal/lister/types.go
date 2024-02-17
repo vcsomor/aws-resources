@@ -19,7 +19,7 @@ type Result struct {
 	ID           string     `json:"id"`
 	CreationTime *time.Time `json:"creationTime"`
 
-	Data any `json:"data"`
+	Properties any `json:"data"`
 }
 
 type S3Data struct {
@@ -28,7 +28,16 @@ type S3Data struct {
 }
 
 type RDSData struct {
-	Tags map[string]*string `json:"tags"`
+	InstanceType     *string            `json:"instanceType"`
+	AvailabilityZone *string            `json:"availabilityZone"`
+	AllocatedStorage *int32             `json:"allocatedStorage"`
+	Engine           *string            `json:"engine"`
+	EngineVersion    *string            `json:"engineVersion"`
+	ReplicaMode      string             `json:"replicaMode"`
+	Status           *string            `json:"status"`
+	MultiAz          *bool              `json:"multiAz"`
+	MultiTenant      *bool              `json:"multiTenant"`
+	Tags             map[string]*string `json:"tags"`
 }
 
 type ResultBasedWriterFactory func(d Result) writer.Writer

@@ -152,7 +152,7 @@ func anS3Result(baseData s3_tasks.ListTaskBucketData, region string, tags map[st
 		Arn:          fmt.Sprintf("arn:aws:s3:::%s", baseData.Name),
 		ID:           baseData.Name,
 		CreationTime: baseData.Created,
-		Data: S3Data{
+		Properties: S3Data{
 			LocationConstraint: region,
 			Tags:               tags,
 		},

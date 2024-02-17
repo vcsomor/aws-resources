@@ -18,7 +18,18 @@ type ListResultRDSData struct {
 	Arn          string
 	ID           string
 	CreationTime *time.Time
-	Tags         map[string]*string
+
+	InstanceType     *string
+	AvailabilityZone *string
+	AllocatedStorage *int32
+	Engine           *string
+	EngineVersion    *string
+	ReplicaMode      string
+	Status           *string
+	MultiAz          *bool
+	MultiTenant      *bool
+
+	Tags map[string]*string
 }
 
 type ListResult struct {
@@ -54,7 +65,18 @@ func (t *listTask) Execute() any {
 			Arn:          res.Arn,
 			ID:           res.ID,
 			CreationTime: res.CreateTime,
-			Tags:         res.Tags,
+
+			InstanceType:     res.InstanceType,
+			AvailabilityZone: res.AvailabilityZone,
+			AllocatedStorage: res.AllocatedStorage,
+			Engine:           res.Engine,
+			EngineVersion:    res.EngineVersion,
+			ReplicaMode:      res.ReplicaMode,
+			Status:           res.Status,
+			MultiAz:          res.MultiAz,
+			MultiTenant:      res.MultiTenant,
+
+			Tags: res.Tags,
 		})
 	}
 
