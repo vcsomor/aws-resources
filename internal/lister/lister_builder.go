@@ -7,11 +7,9 @@ import (
 )
 
 type Dependencies struct {
-	clientFactory                 conn.ClientFactory
-	executor                      executor.SynchronousExecutor
-	logger                        *logrus.Logger
-	individualResultWriterFactory IndividualResultWriterFactory
-	summarizedResultWriterFactory SummarizedResultWriterFactory
+	clientFactory conn.ClientFactory
+	executor      executor.SynchronousExecutor
+	logger        *logrus.Logger
 }
 
 type DependencyFn func(d *Dependencies)
@@ -31,18 +29,6 @@ func WithExecutor(e executor.SynchronousExecutor) DependencyFn {
 func WithLogger(l *logrus.Logger) DependencyFn {
 	return func(d *Dependencies) {
 		d.logger = l
-	}
-}
-
-func WithIndividualWriterFactory(f IndividualResultWriterFactory) DependencyFn {
-	return func(d *Dependencies) {
-		d.individualResultWriterFactory = f
-	}
-}
-
-func WithSummarizedWriterFactory(f SummarizedResultWriterFactory) DependencyFn {
-	return func(d *Dependencies) {
-		d.summarizedResultWriterFactory = f
 	}
 }
 
@@ -96,11 +82,9 @@ func (b *Builder) Build() Lister {
 	}
 
 	return &taskBasedLister{
-		clientFactory:                 deps.clientFactory,
-		executor:                      deps.executor,
-		logger:                        deps.logger,
-		individualResultWriterFactory: deps.individualResultWriterFactory,
-		summarizedResultWriterFactory: deps.summarizedResultWriterFactory,
+		clientFactory: deps.clientFactory,
+		executor:      deps.executor,
+		logger:        deps.logger,
 
 		regions:   params.regions,
 		resources: params.resources,

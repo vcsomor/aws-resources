@@ -9,7 +9,6 @@ import (
 	"github.com/vcsomor/aws-resources/internal/executor"
 	"github.com/vcsomor/aws-resources/internal/lister"
 	"github.com/vcsomor/aws-resources/internal/lister/args"
-	"github.com/vcsomor/aws-resources/internal/lister/writer"
 	"github.com/vcsomor/aws-resources/internal/lister/writer/jsonfile"
 	"github.com/vcsomor/aws-resources/internal/lister/writer/stdout"
 	"github.com/vcsomor/aws-resources/log"
@@ -48,6 +47,11 @@ func ListResources(command *cobra.Command, _ []string) {
 		String())
 	logger.Debugf("output: %v", argOutputs)
 
+	argTarget := command.Flag("target").
+		Value.
+		String()
+	logger.Debugf("target: %v", argTarget)
+
 	threadpool, err := executor.NewThreadpool(threadCount)
 	if err != nil {
 		logger.WithError(err).
@@ -67,38 +71,43 @@ func ListResources(command *cobra.Command, _ []string) {
 		lister.WithExecutor(executor.NewSynchronousExecutor(threadpool)),
 	}
 
-	if slices.Contains(argOutputs, args.OutputStdout) {
-		deps = append(deps, lister.WithSummarizedWriterFactory(func([]lister.Result) writer.Writer {
-			w, _ := stdout.NewWriter(stdout.WithIndentation("\t"))
-			return w
-		}))
-	}
-
-	if slices.Contains(argOutputs, args.OutputFile) {
-		argTarget := command.Flag("target").
-			Value.
-			String()
-		logger.Debugf("target: %v", argTarget)
-
-		deps = append(deps, lister.WithIndividualWriterFactory(func(r lister.Result) writer.Writer {
-			w, _ := jsonfile.NewWriter(
-				argTarget,
-				jsonfile.WithOutputFile(fmt.Sprintf("%s.json", stripArn(r.Arn))),
-				jsonfile.WithIndentation("\t"))
-			return w
-		}))
-	}
-
-	l := lister.NewLister().
+	res := lister.NewLister().
 		Dependencies(deps...).
 		Parameters(
 			lister.WithRegions(argRegions),
 			lister.WithResources(argResources),
 		).
-		Build()
-	resources := l.List(context.TODO())
+		Build().
+		List(context.TODO())
 
-	fmt.Printf("Data fetched %d\n", len(resources))
+	if slices.Contains(argOutputs, args.OutputFile) {
+		writeOutputFiles(argTarget, res)
+	}
+
+	if slices.Contains(argOutputs, args.OutputStdout) {
+		writeStandardOut(res)
+	}
+}
+
+func writeOutputFiles(toFolder string, res []lister.Result) {
+	for _, result := range res {
+		w, err := jsonfile.NewWriter(
+			toFolder,
+			jsonfile.WithOutputFile(fmt.Sprintf("%s.json", stripArn(result.Arn))),
+			jsonfile.WithIndentation("\t"))
+		if err != nil {
+			continue
+		}
+		_ = w.Write(result)
+	}
+}
+
+func writeStandardOut(res []lister.Result) {
+	w, err := stdout.NewWriter(stdout.WithIndentation("\t"))
+	if err != nil {
+		return
+	}
+	_ = w.Write(res)
 }
 
 func stripArn(arn string) any {
