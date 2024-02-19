@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+const arrayTag = "ARRAY"
+
 type Flattener interface {
 	Flatten(data map[string]any) map[string]any
 }
@@ -25,13 +27,13 @@ func (r *objectFlattener) Flatten(data map[string]any) map[string]any {
 func flattenSlice(root string, data []any) map[string]any {
 	if len(data) == 0 {
 		return map[string]any{
-			keyOf(root, "ARRAY"): nil,
+			keyOf(root, arrayTag): nil,
 		}
 	}
 
 	ret := map[string]any{}
 	for i, dt := range data {
-		indexTag := fmt.Sprintf("ARRAY$%d", i)
+		indexTag := fmt.Sprintf(arrayTag+"$%d", i)
 		t := reflect.TypeOf(dt)
 		if t == nil {
 			ret[keyOf(root, indexTag)] = nil
