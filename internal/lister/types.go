@@ -1,7 +1,6 @@
 package lister
 
 import (
-	"github.com/vcsomor/aws-resources/internal/lister/writer"
 	"time"
 )
 
@@ -39,6 +38,3 @@ type RDSData struct {
 	MultiTenant      *bool              `json:"multiTenant"`
 	Tags             map[string]*string `json:"tags"`
 }
-
-type IndividualResultWriterFactory func(r Result) writer.Writer
-type SummarizedResultWriterFactory func(r []Result) writer.Writer
