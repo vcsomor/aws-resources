@@ -1,5 +1,5 @@
 # Build Stage
-FROM lacion/alpine-golang-buildimage:1.13 AS build-stage
+FROM vcsomor/alpine-golang-buildimage:1.21.7 AS build-stage
 
 LABEL app="build-aws-resources"
 LABEL REPO="https://github.com/vcsomor/aws-resources"
