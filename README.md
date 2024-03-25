@@ -1,6 +1,10 @@
 # aws-resources
 
-A Golang project.
+Extract your AWS resources into files.
+
+Currently supported resources are:
+- S3
+- RDS
 
 ## Getting started
 
@@ -10,7 +14,10 @@ Running it then should be as simple as:
 
 ```console
 $ make
-$ ./bin/aws-resources
+# set up your ${HOME}/.aws/credentials and ${HOME}/.aws/config file or 
+# setup the the AWS_XYZ environemntal veraibales according to your need
+$ ./bin/aws-resource list --regions us-west-2 --resources s3,rds --threads 8 --output file,stdout
+$ ./bin/aws-resource help # for more options
 ```
 
 ### Testing
